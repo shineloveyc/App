@@ -1,0 +1,102 @@
+---
+title: "Logic_Test"
+author: "Shine Yao"
+date: "April 2, 2019"
+output: html_document
+---
+
+```{r}
+library(shiny)
+require(shinydashboard)
+library(dplyr)
+library(openxlsx)
+library(rsconnect)
+library(markdown)
+library(scales)
+library(shinythemes)
+library(stringr)
+
+
+#load data from Nav Item Card
+SKU_DF <- read.xlsx("Container_Builder/Data/Items_From_Nav.xlsx", colNames = TRUE, rowNames = FALSE)
+
+#filter all SKUs not for AM
+Active_SKU_DF <- SKU_DF %>% filter(str_detect(No.,"-") &(!Category.Code %in% c('MISC', "WHEEL", "ASSM", "VALVE STEM", "FLAP")) & !str_detect(Description,"REACH") & 
+                                     !str_detect(No.,c("HK","B", "INTF"))  & !Brand.Name %in% c("TRINGL", "COMPONENTS")) %>% 
+  select(No.,Description, Size, Item.Status, Block.PO.Creation, Blocked, Parent.Item,Container.Quantity, Vendor.No.) %>% 
+  filter(Item.Status %in% c("Active", "Discontinued") & Blocked!="Yes" & Block.PO.Creation != "Yes")
+
+```
+
+
+#input
+```{r}
+sku_list <- data.frame(qty = numeric(1), sku = character(1), stringsAsFactors = FALSE)
+sku_list$qty[1] <- 10
+sku_list$sku[1] <-"90300008"
+#90300008
+#90600060
+```
+
+
+
+```{r}
+container_builder <- function(container_df){
+    
+    container_build <- data.frame(pre_code = character(1), IG_Container = numeric(1), IN_Container = numeric(1), IS_Container = numeric(1), stringsAsFactors = FALSE)
+    
+    if(nrow(container_df)>1){
+      if(any(sapply(container_df$Vendor.No., str_detect, pattern ="ATCIN03")==TRUE)){
+        container_build$pre_code[1] = container_df$Parent.Item[container_df$Vendor.No == "ATCIN03"]
+        container_build$IG_Container[1] = sku_list$qty/container_df$Container.Quantity[container_df$Vendor.No == "ATCIN03"]
+        print(TRUE)
+        
+       
+       }else if(any(sapply(container_df$Vendor.No., str_detect, pattern = "ATCIN01")==TRUE)){
+        container_build$pre_code[1] = container_df$Parent.Item[container_df$Vendor.No == "ATCIN01"]
+        container_build$IN_Container[1] = sku_list$qty/container_df$Container.Quantity[container_df$Vendor.No == "ATCIN01"]
+        print(TRUE)
+        
+       }else if(any(sapply(container_df$Vendor.No., str_detect, pattern = "ATCIS01")==TRUE)){
+        container_build$pre_code[1] = container_df$Parent.Item[container_df$Vendor.No == "ATCIS01"]
+        container_build$IS_Container[1] = sku_list$qty/container_df$Container.Quantity[container_df$Vendor.No == "ATCIS01"]
+        print(TRUE)
+        
+    }else{
+       print(FALSE)
+      }
+      
+      
+    }else{
+      if(container_df$Vendor.No.[1] == "ATCIN03"){
+        container_build$pre_code = container_df$Parent.Item[1]
+        container_build$IG_Container = sku_list$qty/container_df$Container.Quantity[1]
+        print("Here")
+      }else if(container_df$Vendor.No.[1] == "ATCIN01"){
+        container_build$pre_code = container_df$Parent.Item[1]
+        container_build$IN_Container = sku_list$qty/container_df$Container.Quantity[1]
+        print("Here")
+      }else if(container_df$Vendor.No.[1] == "ATCIS01"){
+        container_build$pre_code = container_df$Parent.Item[1]
+        container_build$IS_Container = sku_list$qty/container_df$Container.Quantity[1]
+        print("Here")
+      }else{
+        print(FALSE)
+      }
+      
+    }
+    container_build
+  }
+```
+
+
+#data form
+```{r}
+container_df <- Active_SKU_DF %>% filter(Parent.Item %in% sku_list$sku) %>% select(Parent.Item, No., Container.Quantity, Vendor.No.)
+
+#logic goes here
+container_result <- container_builder(container_df)
+    
+
+```
+
